@@ -1,0 +1,77 @@
+mvn archetype:generate -DgroupId=com.example -DartifactId=htmlapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+cd htmlapp
+
+/* patch pom.xml for necessary denendency */
+
+under dependencies tag
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+
+under project tag
+ <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+under build tag
+<plugins>
+       <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
+    </plugins>
+
+/* create the directory structure tp place your servlet file */
+mkdir -p src/main/java/com/example
+
+/* create and place the below html page with the name index.html under webapp directory */
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Post Values</title>
+</head>
+<body>
+    <h1>Welcome to java servlet</h1>
+</body>
+</html>
+
+/* servlet code to render html page  and place it below src/main/java/com/example */
+import java.io.IOException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.RequestDispatcher;
+
+@WebServlet("/display")
+public class DisplayHtmlServlet extends HttpServlet {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // Specify the path to your HTML file relative to the web root
+        RequestDispatcher dispatcher = request.getRequestDispatcher("index.html");
+        
+        // Forward the request and response to the HTML page
+        dispatcher.forward(request, response);
+    }
+}
+
+
+/* build the application */
+mvn clean package
+
+
+/* deploy your application to tomcat server. the war is located in target 
+directory */
+
+sudo cp target/htmlapp.war /var/lib/tomcat10/webapps
+sudo systemctl restart tomcat10
+
