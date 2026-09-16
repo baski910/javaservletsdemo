@@ -1,0 +1,146 @@
+sudo apt install postgresql
+
+sudo nano /etc/postgresql/17/main/pg_hba.conf
+
+
+local   all     all         md5
+
+
+host    all             all             127.0.0.1/32            md5
+host    all             all             0.0.0.0/0               md5
+
+(save the file)
+
+sudo systemctl restart postgresql
+
+/* create database named demodb
+   create user named demouser with password as 'password'
+   grant all privileges to demouser on database demodb
+*/
+
+sudo su - postgresql
+psql
+create database demodb;
+create user demouser with encrypted password 'password';
+grant all on database demodb to demouser;
+
+\c demodb
+grant all on schema public to demouser;
+\q
+
+
+/* create table users inside the database demodb and insert few records */
+psql -U demouser -d demodb (will prompt for password. enter the appropriate password)
+
+create table users(id int,name varchar(50));
+
+insert into users values(1,'bob');
+insert into users values(2,'pat');
+insert into users values(3,'sam');
+
+
+/* create the maven project ^/
+mvn archetype:generate -DgroupId=com.example -DartifactId=dbapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+/* update pom.xml with postgresql dependency and ohter patches */
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <version>42.7.2</version>
+</dependency>
+
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+
+<properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+</properties>
+
+<plugins>
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>3.3.2</version>
+    </plugin>
+</plugins>
+
+
+/* create the directory structure for creating servlet java files */
+mkdir -p src/main/java/com/example
+
+/* create a file name UserServlet.java below src/main/java/com/example */
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@WebServlet("/users")
+public class UserServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    // Database configurations
+    private final String jdbcURL = "jdbc:postgresql://localhost:5432/your_database_name";
+    private final String dbUser = "postgres";
+    private final String dbPassword = "your_password";
+
+    @Override
+    public void init() throws ServletException {
+        try {
+            // Explicitly load the PostgreSQL driver class
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new ServletException("PostgreSQL JDBC Driver not found in classpath", e);
+        }
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+        
+        String sql = "SELECT id, name FROM users";
+
+        // Auto-close resources using try-with-resources
+        try (Connection connection = DriverManager.getConnection(jdbcURL, dbUser, dbPassword);
+             PreparedStatement preparedStatement = connection.prepareStatement(sql);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+
+            out.println("<html><body><h3>User List</h3><ul>");
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                String name = resultSet.getString("name");
+                out.println("<li>ID: " + id + ", Name: " + name + "</li>");
+            }
+            out.println("</ul></body></html>");
+
+        } catch (SQLException e) {
+            out.println("<p>Error connecting to database: " + e.getMessage() + "</p>");
+            e.printStackTrace();
+        }
+    }
+}
+
+
+/* build the application */
+mvn clean package
+
+
+/* deploy the war file to tomcat */
+sudo cp target/dbapp.war /var/lib/tomcat10/webapps
+sudo systemctl restart tomcat10
