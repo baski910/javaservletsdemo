@@ -1,0 +1,133 @@
+Generate a maven web app project
+mvn archetype:generate -DgroupId=com.example -DartifactId=myformapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+under dependencies tag
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+
+under project tag
+ <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+under build tag
+<plugins>
+       <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
+</plugins>
+
+
+
+
+
+
+html form
+/* create a file named index.html below src/main/webapp */
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Post Values</title>
+</head>
+<body>
+    <h2>Submit Data Form</h2>
+    <!-- The action must match your Servlet's URL pattern -->
+    <form action="SubmitServlet" method="POST">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+        
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+        
+        <input type="submit" value="Submit Values">
+    </form>
+</body>
+</html>
+
+
+servlet to render the form and jsp
+/* create a separate file named StaticPageServlet.java below
+src/main/java/com/example */
+
+import java.io.IOException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.RequestDispatcher;
+
+@WebServlet("/showStaticPage")
+public class StaticPageServlet extends HttpServlet {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // Specify the path to your static HTML file
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/index.html");
+        
+        // Forward the request and response to the HTML file
+        dispatcher.forward(request, response);
+    }
+}
+
+
+/* create a separate file named StaticPageServlet.java below
+src/main/java/com/example */
+
+import java.io.IOException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.RequestDispatcher;
+
+@WebServlet("/SubmitServlet")
+public class SubmitServlet extends HttpServlet {
+    
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // 1. Extract values sent from index.html
+        String username = request.getParameter("username");
+        String email = request.getParameter("email");
+        
+        // 2. Set them as attributes to pass to the next page
+        request.setAttribute("userAttr", username);
+        request.setAttribute("emailAttr", email);
+        
+        // 3. Forward the request internally to the display page
+        RequestDispatcher dispatcher = request.getRequestDispatcher("display.jsp");
+        dispatcher.forward(request, response);
+    }
+}
+
+
+JSP page
+/* create jsp page below src/main/webpage with the name display.jsp */
+
+<%@ page isELIgnored="false" %> <!-- directive to substitute variables -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Displayed Values</title>
+</head>
+<body>
+    <h2>Submitted Values Breakdown</h2>
+    <p><strong>Username:</strong> ${userAttr}</p>
+    <p><strong>Email:</strong> ${emailAttr}</p>
+    
+    <br>
+    <a href="index.html">Back to Form</a>
+</body>
+</html>
