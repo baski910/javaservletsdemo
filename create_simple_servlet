@@ -1,0 +1,74 @@
+sudo apt update
+sudo apt install default-jdk maven tomcat10 tomcat10-admin -y
+
+/* 
+maven-archetype-quickstart: Generates a basic, sample Java project structure with a simple App.java and unit test.
+maven-archetype-webapp: Generates a skeleton directory structure for a Java Web Application (WEB-INF, index.jsp, etc.).
+maven-archetype-simple: Creates a minimal, clean Maven project with a standard layout without extra sample code.
+maven-archetype-plugin: Generates a starting template for writing a custom Maven plugin.
+*/
+
+
+mvn archetype:generate -DgroupId=com.example -DartifactId=myapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+cd myservletapp
+
+mkdir -p src/main/java/com/example
+
+add jakarta.servlet.api dependency to project by addint it in pom.xml
+earlier it was servlet-api
+under dependencies tag
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+
+under project tag
+ <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+under build tag
+<plugins>
+       <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
+    </plugins>
+
+
+HelloServlet.java
+import java.io.IOException;
+import java.io.PrintWriter;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@WebServlet("/hello")
+public class HelloServlet extends HttpServlet {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+        throws ServletException, IOException {
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+        out.println("<h1>Hello from Debian 12 Servlet!</h1>");
+    }
+}
+
+
+
+
+compile and build the project
+mvn clean package
+
+Deploye the project
+sudo cp target/myservletapp.war /var/lib/tomcat10/webapps
+
+Access using browser
+http://localhost:8080/myservletapp/hello
