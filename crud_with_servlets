@@ -110,6 +110,24 @@ public class UserDao {
         }
         return status;
     }
+    public static List<User> getAllUsers() {
+        List<User> list = new ArrayList<>();
+        try (Connection con = getConnection()) {
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM users");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                User e = new User();
+                e.setId(rs.getInt(1));
+                e.setName(rs.getString(2));
+                e.setNumberOfPosts(rs.getInt(3));
+                e.setTechnologiesPreferred(rs.getString(4));
+                list.add(e);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
     
 }
 
