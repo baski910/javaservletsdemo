@@ -1,0 +1,103 @@
+/* generate the maven project */
+mvn archetype:generate -DgroupId=com.example -DartifactId=myapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+cd myapp
+mkdir -p src/main/java/com/example
+
+/* update pom.xml with following patches */
+/* under project tag */
+   <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+
+/* under dependencies tag */
+    <dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+    <groupId>jakarta.servlet.jsp.jstl</groupId>
+    <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+    <version>3.0.0</version>
+    </dependency>
+
+    <dependency>
+    <groupId>org.glassfish.web</groupId>
+    <artifactId>jakarta.servlet.jsp.jstl</artifactId>
+    <version>3.0.1</version>
+    </dependency>
+
+
+/* under build tag */
+<plugins>
+       <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
+    </plugins>
+
+
+
+
+/* servlet code */
+/* create a file named DisplayArrayServlet.java with following code and place it under
+   src/main/java/com/example */
+import java.io.IOException;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@WebServlet("/DisplayArrayServlet")
+public class DisplayArrayServlet extends HttpServlet {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // Define the array
+        String[] frameworkArray = {"Spring Boot", "Hibernate", "Struts", "JSF"};
+        
+        // Pass the array to the request scope
+        request.setAttribute("frameworks", frameworkArray);
+        
+        // Forward the request to the JSP page
+        RequestDispatcher rd = request.getRequestDispatcher("/display.jsp");
+        rd.forward(request, response);
+    }
+}
+
+
+
+/* jsp page */
+/* create a file named display.jsp with the following code and place it under src/main/webapp */
+<%@ page isELIgnored="false" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%-- 1. Import the JSTL Core Tag Library --%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+
+<html>
+<head>
+    <title>Display Array Using JSTL</title>
+</head>
+<body>
+
+    <h2>Java Frameworks List</h2>
+    <ul>
+        <%-- 2. Iterate over the array --%>
+        <c:forEach var="framework" items="${frameworks}">
+            <li>
+                <%-- 3. Print the current element safely --%>
+                <c:out value="${framework}" />
+            </li>
+        </c:forEach>
+    </ul>
+
+</body>
+</html>
