@@ -1,0 +1,190 @@
+mvn archetype:generate -DgroupId=com.example -DartifactId=dbapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+cd dbapp
+
+mkdir -p src/main/java/com/exmaple
+
+
+/* applyc the patches to pom.xml */
+/* under dependencies tag */
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <version>42.7.2</version>
+</dependency>
+
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+
+/* under project tag */
+ <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+/* under build tag */
+<plugins>
+       <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
+    </plugins>
+
+/* create the following files under
+  src/main/java/com/example */
+
+/* User.java */
+public class User {
+    private int userId;
+    private int numberOfPosts;
+    private String userName, technologiesPreferred;
+
+    public int getId() { return userId; }
+
+    public void setId(int id) { this.userId = id; }
+
+    public String getName() { return userName; }
+
+    public void setName(String name)
+    {
+        this.userName = name;
+    }
+
+    public int getNumberOfPosts() { return numberOfPosts; }
+
+    public void setNumberOfPosts(int numberOfPosts)
+    {
+        this.numberOfPosts = numberOfPosts;
+    }
+
+    public String getTechnologiesPreferred() {
+    return technologiesPreferred;
+     }
+
+    public void
+    setTechnologiesPreferred(String technologiesPreferred)
+    {
+        this.technologiesPreferred = technologiesPreferred;
+    }
+}
+
+
+/* UserDao.java */
+import java.sql.*;
+import java.util.*;
+
+public class UserDao {
+
+    private static String jdbcURL = "jdbc:postgresql://localhost:5432/demodb";
+    private static String jdbcUsername = "demouser";
+    private static String jdbcPassword = "password";
+
+    public static Connection getConnection() {
+        Connection con = null;
+        try {
+            Class.forName("org.postgresql.Driver");
+            con = DriverManager.getConnection(jdbcURL, jdbcUsername, jdbcPassword);
+        } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return con;
+    }
+    public static int save(User e) {
+        int status = 0;
+        try (Connection con = getConnection()) {
+            PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO users(userName, numberOfPosts, technologiesPreferred) VALUES (?, ?, ?)"
+            );
+            ps.setString(1, e.getName());
+            ps.setInt(2, e.getNumberOfPosts());
+            ps.setString(3, e.getTechnologiesPreferred());
+            status = ps.executeUpdate();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return status;
+    }
+    
+}
+
+
+/* SaveUserServlet.java */
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@WebServlet("/SaveServlet")
+public class SaveUserServlet extends HttpServlet {
+    protected void doPost(HttpServletRequest request,
+                          HttpServletResponse response)
+        throws ServletException, IOException
+    {
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+        // Getting all the request parameters from
+        // index.html
+        String name = request.getParameter("userName");
+        int numberOfPosts = Integer.parseInt(
+            request.getParameter("numberOfPosts"));
+        String technologiesPreferred
+            = request.getParameter("technologiesPreferred");
+        // GeekUsers object is created
+        User user = new User();
+        user.setName(name);
+        user.setNumberOfPosts(numberOfPosts);
+        user.setTechnologiesPreferred(technologiesPreferred);
+        int status = UserDao.save(user);
+        if (status > 0) {
+		out.println("<p>Record saved successfully!</p>");
+            request.getRequestDispatcher("index.html")
+                .include(request, response);
+        }
+        else {
+            out.println("Sorry! unable to save record");
+        }
+
+        out.close();
+    }
+}
+
+/* create index.html below src/main/webapp */
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Post Values</title>
+</head>
+<body>
+    <h2>Submit Data Form</h2>
+    
+    <form action="SaveServlet" method="POST">
+        <label for="username">Username:</label>
+        <input type="text" id="userName" name="userName" required><br><br>
+        
+        <label for="numberofposts">Number of Posts:</label>
+        <input type="text" id="numberOfPosts" name="numberOfPosts" required><br><br>
+
+        <label for="technologiespreferred">Technologies Preferreds:</label>
+        <input type="text" id="technologiesPreferred" name="technologiesPreferred" required><br><br>
+        
+        <input type="submit" value="Submit Values">
+    </form>
+</body>
+</html>
+
+/* compile and build the applicaion */
+mvn clean package
+
+/* deploy the package */
+sudo cp target/dbapp.war /var/lib/tomcat10/webapps
