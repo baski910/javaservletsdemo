@@ -1,0 +1,158 @@
+create a maven project
+mvn archetype:generate -DgroupId=com.example -DartifactId=firstapp -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+
+mkdir -p src/main/resources
+mkdir -p src/test/resources
+
+/* update pom.xml for necessary dependency */
+/* under dependency tag */
+
+<!-- Hibernate Core ORM -->
+    <dependency>
+        <groupId>org.hibernate.orm</groupId>
+        <artifactId>hibernate-core</artifactId>
+        <version>6.5.2.Final</version>
+    </dependency>
+
+    <!-- PostgreSQL JDBC Driver -->
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>42.7.3</version>
+    </dependency>
+
+
+/* create hibernate configuration file hibernate.cfg.xml below src/main/resources */
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- Database Connection Settings -->
+        <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/your_database_name</property>
+        <property name="hibernate.connection.username">postgres</property>
+        <property name="hibernate.connection.password">your_password</property>
+
+        <!-- Hibernate SQL Dialect for PostgreSQL -->
+        <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+
+        <!-- Echo all executed SQL to stdout (Good for debugging) -->
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+
+        <!-- Automatically update the database schema on startup -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        
+        <mapping class="com.example.model.Product"/>
+    </session-factory>
+</hibernate-configuration>
+
+
+/* hibernate property hibernat.hbm2ddl.auto values */
+none: This is the default value. Hibernate makes no changes to the database structure and performs no validations.
+validate: Validates the database schema against your Java entity mappings. If they do not match (e.g., a missing column or table), Hibernate will throw an exception and fail to start. It makes no changes to the database.
+update: Updates the existing database schema to match your Java entity mappings. It adds new tables or columns but never deletes existing columns or tables to prevent data loss.
+create: Creates the database schema from scratch. It drops existing tables before creating the new ones, meaning all data is lost every time the application restarts.
+create-drop: Similar to create, it drops and recreates the tables when the application starts. However, it also drops the tables again when the application shuts down cleanly.
+
+/* create the model Product.java below src/main/java/com/example/model */
+package com.example.model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "products")
+public class Product {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Matches PostgreSQL SERIAL/BIGSERIAL
+    private Long id;
+
+    @Column(name = "product_name", nullable = false)
+    private String name;
+
+    @Column(name = "price")
+    private Double price;
+
+    // Constructors
+    public Product() {}
+
+    public Product(String name, Double price) {
+        this.name = name;
+        this.price = price;
+    }
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
+}
+
+
+/* adding record to table */
+package com.example;
+
+import com.example.model.Product;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.cfg.Configuration;
+import java.util.List;
+
+public class MainApp {
+    public static void main(String[] args) {
+        // 1. Build the SessionFactory from hibernate.cfg.xml
+        SessionFactory factory = new Configuration()
+                .configure("hibernate.cfg.xml")
+                .buildSessionFactory();
+
+        // 2. Open a new session
+        Session session = factory.openSession();
+        Transaction transaction = null;
+
+        try {
+            // 3. Start a transaction
+            transaction = session.beginTransaction();
+
+            // 4. Create and Save a new Product (INSERT)
+            Product newProduct = new Product("Laptop", 1200.00);
+            session.persist(newProduct); 
+            System.out.println("Product saved successfully!");
+
+            // 5. Commit the transaction
+            transaction.commit();
+
+            // 6. Fetch and display data (SELECT)
+            List<Product> products = session.createQuery("from Product", Product.class).list();
+            System.out.println("\n--- Saved Products ---");
+            for (Product p : products) {
+                System.out.println("ID: " + p.getId() + " | Name: " + p.getName() + " | Price: $" + p.getPrice());
+            }
+
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback(); // Rollback if an error occurs
+            }
+            e.printStackTrace();
+        } finally {
+            // 7. Clean up resources
+            session.close();
+            factory.close();
+        }
+    }
+}
+
+
+/* build the project */
+mvn clean package
+
+
+/* execute the project */
+mvn exec:java -Dexec.mainClass="com.example.App"
