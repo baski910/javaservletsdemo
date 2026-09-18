@@ -1,0 +1,250 @@
+/* create remove sessions */
+// Get existing session or create a new one if it doesn't exist
+HttpSession session = request.getSession(); 
+
+// Store data in the session
+session.setAttribute("username", "JohnDoe"); 
+
+// Retrieve data from the session (requires casting)
+String user = (String) session.getAttribute("username"); 
+
+// End the session manually
+session.invalidate();
+
+
+mvn archetype:generate -DgroupId=com.example -DartifactId=authapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+cd authapp
+mkdir -p src/main/java/com/example
+
+under dependencies tag
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+
+under project tag
+ <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+under build tag
+<plugins>
+       <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
+    </plugins>
+
+
+/* login.jsp */
+<%@ page isELIgnored="false" %>
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Login Page</title>
+</head>
+<body>
+
+    <form action="login" method="post">
+
+        <h3>Enter Login details</h3>
+
+        <table>
+            <tr>
+                <td>User Name:</td>
+                <td><input type="text" name="username" /></td>
+            </tr>
+            <tr>
+                <td>User Password:</td>
+                <td><input type="password" name="userpassword" /></td>
+            </tr>
+
+        </table>
+        
+        <input type="submit" value="Login" />
+
+    </form>
+</body>
+</html>
+
+
+/* welcome.jsp */
+<%@ page isELIgnored="false" %>
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Welcome Page</title>
+</head>
+<body>
+
+    <form action="logout" method="get">
+
+        <h2>
+            Hello
+            <%=request.getParameter("name")%>!
+        </h2>
+        <h3>Welcome to Auth Example.</h3>
+
+        <br> <input type="submit" value="Logout" />
+    </form>
+    
+</body>
+</html>
+
+
+
+package com.example.controller;
+
+import java.io.IOException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+@WebServlet("/login")
+public class LoginServlet extends HttpServlet {
+    
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        String user = request.getParameter("username");
+        String pass = request.getParameter("userpassword");
+        
+        // Simple hardcoded authentication check
+        if ("admin".equals(user) && "password123".equals(pass)) {
+            // Create a new session or return the existing one
+            HttpSession session = request.getSession(true); 
+            
+            // Bind user tracking data to the session
+            session.setAttribute("user", user); 
+            
+            // Redirect to a protected page/dashboard
+            response.sendRedirect(request.getContextPath() + "/protected/dashboard");
+        } else {
+            // Redirect back to login with an error message
+            response.sendRedirect(request.getContextPath() + "/login.jsp?error=invalid");
+        }
+    }
+}
+
+
+
+package com.example.filter;
+
+import java.io.IOException;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+// Protects all URLs matching the /protected/ path pattern
+@WebFilter("/protected/*")
+public class AuthFilter implements Filter {
+
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+        
+        // Pass 'false' to check for session presence without creating a new one
+        HttpSession session = httpRequest.getSession(false); 
+        
+        boolean loggedIn = (session != null && session.getAttribute("user") != null);
+        
+        if (loggedIn) {
+            // User is authenticated, let the request proceed to the resource
+            chain.doFilter(request, response);
+        } else {
+            // User is not authenticated, redirect them to the login page
+            httpResponse.sendRedirect(httpRequest.getContextPath() + "/login.jsp");
+        }
+    }
+
+    public void init(FilterConfig fConfig) throws ServletException {}
+    public void destroy() {}
+}
+
+
+
+package com.example.controller;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+@WebServlet("/protected/dashboard")
+public class DashboardServlet extends HttpServlet {
+    
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+        
+        HttpSession session = request.getSession(false);
+        String username = (String) session.getAttribute("user");
+        
+        out.println("<html><body>");
+        out.println("<h2>Welcome to your secure Dashboard, " + username + "!</h2>");
+        out.println("<p>This URL is protected.</p>");
+        out.println("<a href='" + request.getContextPath() + "/logout'>Log Out</a>");
+        out.println("</body></html>");
+    }
+}
+
+
+
+package com.example.controller;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+@WebServlet("/logout")
+public class LogoutServlet extends HttpServlet {
+    
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // Fetch existing session without creating a new one
+        HttpSession session = request.getSession(false);
+        
+        if (session != null) {
+            // Destroys the session and removes all attributes
+            session.invalidate(); 
+        }
+        
+        // Redirect the user back to the login page
+        response.sendRedirect(request.getContextPath() + "/login.jsp");
+    }
+}
