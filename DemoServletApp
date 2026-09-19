@@ -1,0 +1,9 @@
+				A Simple Servlet App
+Create a web page which has input boxes to enter details like name, email ,mobile, password and profile picuture
+
+Write a appropriate java servlet to add these records to database(postgresql) using ORM library like hibernate. The password entered should be stored in the backend as hashed string using any of AES algorithm.
+
+Write another web page to display the users added along with the profile picture.
+
+Advocated Platform
+Debian 13, jdk25, maven 3.0+, tomcat10
