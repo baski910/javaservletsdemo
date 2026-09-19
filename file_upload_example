@@ -1,0 +1,207 @@
+/* create the project */
+
+mvn archetype:generate -DgroupId=com.example -DartifactId=uploadapp -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false
+
+
+/* update dependencies, compiler and maven version */
+under dependencies tag
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+
+under project tag
+ <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+under build tag
+<plugins>
+       <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
+    </plugins>
+
+/* index.html  */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jakarta Servlet File Upload</title>
+</head>
+<body>
+    <h2>Upload File to Server</h2>
+    <form action="fileuploadservlet" method="POST" enctype="multipart/form-data">
+        <label for="fileSelect">Select file:</label>
+        <input type="file" id="fileSelect" name="file" required><br><br>
+        
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>
+
+/* servlet code displaying the html page */
+import java.io.IOException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.RequestDispatcher;
+
+@WebServlet("/display")
+public class DisplayHtmlServlet extends HttpServlet {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // Specify the path to your HTML file relative to the web root
+        RequestDispatcher dispatcher = request.getRequestDispatcher("index.html");
+        
+        // Forward the request and response to the HTML page
+        dispatcher.forward(request, response);
+    }
+}
+
+
+/* servlet code for saving uploaded file */
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
+
+@WebServlet("/fileuploadservlet")
+@MultipartConfig(
+    fileSizeThreshold = 1024 * 1024,
+    maxFileSize = 10L * 1024 * 1024,
+    maxRequestSize = 100L * 1024 * 1024
+)
+public class FileUploadServlet extends HttpServlet {
+
+  private static final Path UPLOAD_DIR = Path.of("/var/tmp/", "uploads");
+
+  @Override
+  protected void doPost(
+      HttpServletRequest request,
+      HttpServletResponse response
+  ) throws ServletException, IOException {
+
+    Files.createDirectories(UPLOAD_DIR);
+
+    var filePart = request.getPart("file");
+    var submittedName = Path.of(filePart.getSubmittedFileName())
+        .getFileName()
+        .toString();
+
+    if (submittedName.isBlank()) {
+      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No file selected.");
+      return;
+    }
+
+    var target = UPLOAD_DIR.resolve(submittedName).normalize();
+
+    if (!target.getParent().equals(UPLOAD_DIR.normalize())) {
+      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid filename.");
+      return;
+    }
+
+    try (var input = filePart.getInputStream()) {
+      Files.copy(input, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    response.setContentType("text/plain");
+    response.getWriter().println("The file uploaded successfully.");
+  }
+}
+
+
+/* servlet code to save the uploade file using FileOutputStream */
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
+
+@WebServlet("/fileuploadservlet")
+@MultipartConfig(
+    fileSizeThreshold = 1024 * 1024,
+    maxFileSize = 10L * 1024 * 1024,
+    maxRequestSize = 100L * 1024 * 1024
+)
+public class FileUploadServlet extends HttpServlet {
+
+  private static final Path UPLOAD_DIR = Path.of("/var/tmp", "uploads");
+
+  @Override
+  protected void doPost(
+      HttpServletRequest request,
+      HttpServletResponse response
+  ) throws ServletException, IOException {
+
+    Files.createDirectories(UPLOAD_DIR);
+
+    Part filePart = request.getPart("file");
+    String submittedName = Path.of(filePart.getSubmittedFileName())
+        .getFileName()
+        .toString();
+
+    if (submittedName.isBlank()) {
+      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No file selected.");
+      return;
+    }
+
+    //String savePath= UPLOAD_DIR + File.separator + submittedName;
+    String savePath= "/var/tmp/uploads/demo_2.jpg";
+
+    //filePart.write(savePath);
+    int j=0;
+    try(InputStream inp=filePart.getInputStream();
+        OutputStream output= new FileOutputStream(savePath)){
+	    int i;
+	    while((i = inp.read()) != -1){
+		    output.write(i);
+		    j++;
+	    }
+    }catch(IOException e){
+	    response.sendError(HttpServletResponse.SC_BAD_REQUEST,"error saving uploaded file");
+	    return;
+    }
+    /*
+    Path target = UPLOAD_DIR.resolve(submittedName).normalize();
+
+    if (!target.getParent().equals(UPLOAD_DIR.normalize())) {
+      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid filename.");
+      return;
+    }
+
+    try (InputStream input = filePart.getInputStream()) {
+      Files.copy(input, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    }
+    */
+
+    response.setContentType("text/plain");
+    response.getWriter().println("The file uploaded with size " + j + " successfully.");
+  }
+}
