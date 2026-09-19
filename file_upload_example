@@ -90,7 +90,7 @@ import jakarta.servlet.http.Part;
 )
 public class FileUploadServlet extends HttpServlet {
 
-  private static final Path UPLOAD_DIR = Path.of("/var/tmp/", "uploads");
+  //private static final Path UPLOAD_DIR = Path.of("/var/tmp/", "uploads");
 
   @Override
   protected void doPost(
@@ -98,110 +98,47 @@ public class FileUploadServlet extends HttpServlet {
       HttpServletResponse response
   ) throws ServletException, IOException {
 
-    Files.createDirectories(UPLOAD_DIR);
+    //Files.createDirectories(UPLOAD_DIR);
+	// 1. Get the part from the request
+        Part filePart = request.getPart("file"); 
+        
+        // 2. Define an absolute directory path on the server
+        String uploadPath = "/tmp/uploads"; // Or System.getProperty("java.io.tmpdir")
+        File uploadDir = new File(uploadPath);
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs(); // Create directory if it doesn't exist
+        }
+        
+        // 3. Extract file name and write to absolute path
+        String fileName = extractFileName(filePart);
+        File file = new File(uploadDir, fileName);
+        try (InputStream input = filePart.getInputStream();
+             OutputStream output = new FileOutputStream(file)) {
+    
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = input.read(buffer)) > 0) {
+                  output.write(buffer, 0, length);
+                }
+              } catch (IOException e) {
+                 e.printStackTrace(); // This WILL catch any hidden Linux permission issues!
+     }
 
-    var filePart = request.getPart("file");
-    var submittedName = Path.of(filePart.getSubmittedFileName())
-        .getFileName()
-        .toString();
-
-    if (submittedName.isBlank()) {
-      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No file selected.");
-      return;
-    }
-
-    var target = UPLOAD_DIR.resolve(submittedName).normalize();
-
-    if (!target.getParent().equals(UPLOAD_DIR.normalize())) {
-      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid filename.");
-      return;
-    }
-
-    try (var input = filePart.getInputStream()) {
-      Files.copy(input, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-    }
-
+    
     response.setContentType("text/plain");
     response.getWriter().println("The file uploaded successfully.");
   }
+
+  private String extractFileName(Part part) {
+        String contentDisp = part.getHeader("content-disposition");
+        for (String token : contentDisp.split(";")) {
+            if (token.trim().startsWith("filename")) {
+                return token.substring(token.indexOf('=') + 1).trim().replace("\"", "");
+            }
+        }
+        return "default_file";
+    }
+
 }
 
 
-/* servlet code to save the uploade file using FileOutputStream */
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileOutputStream;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-
-@WebServlet("/fileuploadservlet")
-@MultipartConfig(
-    fileSizeThreshold = 1024 * 1024,
-    maxFileSize = 10L * 1024 * 1024,
-    maxRequestSize = 100L * 1024 * 1024
-)
-public class FileUploadServlet extends HttpServlet {
-
-  private static final Path UPLOAD_DIR = Path.of("/var/tmp", "uploads");
-
-  @Override
-  protected void doPost(
-      HttpServletRequest request,
-      HttpServletResponse response
-  ) throws ServletException, IOException {
-
-    Files.createDirectories(UPLOAD_DIR);
-
-    Part filePart = request.getPart("file");
-    String submittedName = Path.of(filePart.getSubmittedFileName())
-        .getFileName()
-        .toString();
-
-    if (submittedName.isBlank()) {
-      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No file selected.");
-      return;
-    }
-
-    //String savePath= UPLOAD_DIR + File.separator + submittedName;
-    String savePath= "/var/tmp/uploads/demo_2.jpg";
-
-    //filePart.write(savePath);
-    int j=0;
-    try(InputStream inp=filePart.getInputStream();
-        OutputStream output= new FileOutputStream(savePath)){
-	    int i;
-	    while((i = inp.read()) != -1){
-		    output.write(i);
-		    j++;
-	    }
-    }catch(IOException e){
-	    response.sendError(HttpServletResponse.SC_BAD_REQUEST,"error saving uploaded file");
-	    return;
-    }
-    /*
-    Path target = UPLOAD_DIR.resolve(submittedName).normalize();
-
-    if (!target.getParent().equals(UPLOAD_DIR.normalize())) {
-      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid filename.");
-      return;
-    }
-
-    try (InputStream input = filePart.getInputStream()) {
-      Files.copy(input, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-    }
-    */
-
-    response.setContentType("text/plain");
-    response.getWriter().println("The file uploaded with size " + j + " successfully.");
-  }
-}
